@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import streamlit as st
 
 class SimplexSolver:
@@ -44,16 +38,17 @@ class SimplexSolver:
         for term in row:
             variable = ''.join(filter(str.isalpha, term))
             i = term.find(variable)
-            value = term[:i]
+            value = term[:i].strip()
             coeff = 1
-            if value.startswith('-'):
-                q = value.replace('-', '').strip()
-                coeff = -1 if q == '' else -float(q)
-            elif value.startswith('+'):
-                q = value.replace('+', '').strip()
-                coeff = 1 if q == '' else float(q)
+            if value == '' or value == '+':
+                coeff = 1
+            elif value == '-':
+                coeff = -1
             else:
-                coeff = float(value)
+                try:
+                    coeff = float(value)
+                except ValueError:
+                    raise ValueError(f"Invalid coefficient in term: {term}")
             if variable not in self.variables:
                 self.variables.append(variable)
             vars[variable] = coeff
@@ -306,6 +301,36 @@ class SimplexSolver:
         return self.history
 
 def main():
+    # Set page config for bright theme
+    st.set_page_config(
+        page_title="Two-Phase Simplex Method",
+        page_icon="📊",
+        layout="centered",
+        initial_sidebar_state="expanded",
+        menu_items={
+            'Get Help': 'https://www.example.com',
+            'Report a bug': "https://www.example.com",
+            'About': "This is a Two-Phase Simplex Method solver."
+        }
+    )
+
+    # Add custom CSS for bright theme
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background-color: #FFFFFF;
+            color: #262730;
+        }
+        .stButton>button {
+            background-color: #FF4B4B;
+            color: white;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
     st.title("Two-Phase Simplex Method Calculator")
     st.write("Enter the linear programming problem below:")
 
@@ -318,24 +343,20 @@ def main():
             st.error("Please provide both the objective function and constraints.")
         else:
             solver = SimplexSolver()
-            target, r_vector = solver.standard_form(iobj, irows)
-            solver.target = target
-            solver.r_vector = r_vector
-            solver.start_simplex()
+            try:
+                target, r_vector = solver.standard_form(iobj, irows)
+                solver.target = target
+                solver.r_vector = r_vector
+                solver.start_simplex()
 
-            # Display results
-            st.subheader("Solution:")
-            st.write(solver.get_output())
+                # Display results
+                st.subheader("Solution:")
+                st.write(solver.get_output())
 
-            st.subheader("Steps:")
-            st.write(solver.get_steps())
+                st.subheader("Steps:")
+                st.write(solver.get_steps())
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
 
 if __name__ == '__main__':
     main()
-
-
-# In[ ]:
-
-
-
-
