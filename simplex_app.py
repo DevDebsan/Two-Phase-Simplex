@@ -61,25 +61,31 @@ class SimplexSolver:
         return target, obj_value
 
     def parse_constraint(self, irows):
-        signs = []
-        rows = []
-        for row in irows:
-            le = row.split('<=')
-            if len(le) == 2:
-                signs.append('le')
-                rows.append(le)
-                continue
-            ge = row.split('>=')
-            if len(ge) == 2:
-                signs.append('ge')
-                rows.append(ge)
-                continue
-            signs.append('e')
-            rows.append(row.split('='))
-        r_vector = [float(row[1].strip()) for row in rows]
-        row_terms = [self.find_terms(row[0]) for row in rows]
-        coeff_dict = [self.find_coeff(row) for row in row_terms]
-        return r_vector, coeff_dict, signs
+    signs = []
+    rows = []
+    for row in irows:
+        le = row.split('<=')
+        if len(le) == 2:
+            signs.append('le')
+            rows.append(le)
+            continue
+        ge = row.split('>=')
+        if len(ge) == 2:
+            signs.append('ge')
+            rows.append(ge)
+            continue
+        signs.append('e')
+        rows.append(row.split('='))
+    
+    # Debugging: Print the parsed constraints
+    print("Parsed Constraints:")
+    for i, row in enumerate(rows):
+        print(f"Constraint {i+1}: {row}")
+    
+    r_vector = [float(row[1].strip()) for row in rows]
+    row_terms = [self.find_terms(row[0]) for row in rows]
+    coeff_dict = [self.find_coeff(row) for row in row_terms]
+    return r_vector, coeff_dict, signs
 
     def get_cost_vector(self, obj):
         for v in self.variables:
