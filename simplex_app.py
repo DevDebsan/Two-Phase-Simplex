@@ -26,7 +26,7 @@ class SimplexSolver:
         self.basic_kount = 0
         self.non_basic_kount = 0
         self.artificial_kount = 0
-        self.unbounded = None
+        self.unbounded = False
         self.history = []
 
     def find_terms(self, row):
@@ -55,39 +55,51 @@ class SimplexSolver:
         return vars
 
     def parse_obj(self, iobj):
-        mtarget, row = iobj.split('=')
-        target = mtarget.strip().lower()
-        obj_value = self.find_coeff(self.find_terms(row))
-        return target, obj_value
+        try:
+            mtarget, row = iobj.split('=')
+            target = mtarget.strip().lower()
+            obj_value = self.find_coeff(self.find_terms(row))
+            return target, obj_value
+        except ValueError as e:
+            raise ValueError(f"Invalid objective function format: {e}")
 
     def parse_constraint(self, irows):
-    signs = []
-    rows = []
-    for row in irows:
-        le = row.split('<=')
-        if len(le) == 2:
-            signs.append('le')
-            rows.append(le)
-            continue
-        ge = row.split('>=')
-        if len(ge) == 2:
-            signs.append('ge')
-            rows.append(ge)
-            continue
-        signs.append('e')
-        rows.append(row.split('='))
-    
-    # Debugging: Print the parsed constraints
-    print("Parsed Constraints:")
-    for i, row in enumerate(rows):
-        print(f"Constraint {i+1}: {row}")
-    
-    r_vector = [float(row[1].strip()) for row in rows]
-    row_terms = [self.find_terms(row[0]) for row in rows]
-    coeff_dict = [self.find_coeff(row) for row in row_terms]
-    return r_vector, coeff_dict, signs
+        signs = []
+        rows = []
+        for row in irows:
+            if not row.strip():
+                continue
+            le = row.split('<=')
+            if len(le) == 2:
+                signs.append('le')
+                rows.append(le)
+                continue
+            ge = row.split('>=')
+            if len(ge) == 2:
+                signs.append('ge')
+                rows.append(ge)
+                continue
+            eq = row.split('=')
+            if len(eq) == 2:
+                signs.append('e')
+                rows.append(eq)
+                continue
+            raise ValueError(f"Invalid constraint format: {row}")
+        
+        r_vector = []
+        coeff_dict = []
+        for row in rows:
+            try:
+                r_vector.append(float(row[1].strip()))
+                row_terms = self.find_terms(row[0])
+                coeff_dict.append(self.find_coeff(row_terms))
+            except (IndexError, ValueError) as e:
+                raise ValueError(f"Error parsing constraint: {row}. Details: {e}")
+        
+        return r_vector, coeff_dict, signs
 
     def get_cost_vector(self, obj):
+        self.cost_vector = []
         for v in self.variables:
             if v in obj:
                 self.cost_vector.append(obj[v])
@@ -110,7 +122,7 @@ class SimplexSolver:
                     row[v] = 0
 
     def form_matrix_a(self, c_dict):
-        return [[row[v] for v in self.variables] for row in c_dict]
+        return [[row.get(v, 0) for v in self.variables] for row in c_dict]
 
     def find_remaining(self, matrix, i):
         return matrix[:i] + matrix[i+1:]
@@ -307,7 +319,6 @@ class SimplexSolver:
         return self.history
 
 def main():
-    # Set page config for bright theme
     st.set_page_config(
         page_title="Two-Phase Simplex Method",
         page_icon="📊",
@@ -320,7 +331,6 @@ def main():
         }
     )
 
-    # Add custom CSS for bright theme
     st.markdown(
         """
         <style>
@@ -340,7 +350,6 @@ def main():
     st.title("Two-Phase Simplex Method Calculator")
     st.write("Enter the linear programming problem below:")
 
-    # Input fields
     iobj = st.text_input("Objective Function (e.g., max = 3x1 + 2x2 + 3x3):")
     irows = st.text_area("Constraints (one per line, e.g., 2x1 + x2 <= 18):").split('\n')
 
@@ -355,7 +364,6 @@ def main():
                 solver.r_vector = r_vector
                 solver.start_simplex()
 
-                # Display results
                 st.subheader("Solution:")
                 st.write(solver.get_output())
 
