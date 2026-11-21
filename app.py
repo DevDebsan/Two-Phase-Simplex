@@ -1,38 +1,39 @@
-import streamlit as st
+import contextlib
+import io
+
 import numpy as np
-import pandas as pd
-from two_phase_simplex import two_phase_simplex, format_tableau
+import streamlit as st
+
+from simplex_app import two_phase_simplex
 
 st.title("Two-Phase Simplex Method Solver")
+st.caption("Minimise c·x subject to A·x = b, x ≥ 0. Enter numbers separated by spaces.")
 
-m = st.number_input("Number of Constraints (m)", min_value=1, step=1)
-n = st.number_input("Number of Variables (n)", min_value=1, step=1)
+m = int(st.number_input("Number of constraints (m)", min_value=1, value=2, step=1))
+n = int(st.number_input("Number of variables (n)", min_value=1, value=2, step=1))
 
-if st.button("Proceed"):
-    A = []
-    b = []
-    c = []
+with st.form("lp"):
+    st.subheader("Constraints  (A x = b)")
+    rows = [st.text_input(f"Coefficients of constraint {i + 1}  ({n} values)", key=f"a{i}") for i in range(m)]
+    rhs = [st.text_input(f"Right-hand side of constraint {i + 1}", key=f"b{i}") for i in range(m)]
 
-    st.subheader("Enter Constraint Coefficients")
-    for i in range(int(m)):
-        row = st.text_input(f"Constraint {i+1} (Space Separated)", "")
-        if row:
-            A.append(list(map(float, row.split())))
-            b.append(float(st.text_input(f"Right-hand side of Constraint {i+1}", "")))
+    st.subheader("Objective  (minimise c x)")
+    obj = st.text_input(f"Objective coefficients  ({n} values)")
+    submitted = st.form_submit_button("Solve")
 
-    st.subheader("Enter Objective Function Coefficients")
-    obj = st.text_input("Objective Function Coefficients (Space Separated)", "")
-    if obj:
-        c = list(map(float, obj.split()))
+if submitted:
+    try:
+        A = np.array([list(map(float, r.split())) for r in rows])
+        b = np.array([float(v) for v in rhs])
+        c = np.array(list(map(float, obj.split())))
+        if A.shape != (m, n) or c.shape != (n,):
+            raise ValueError(f"Expected {m} rows of {n} coefficients and {n} objective coefficients.")
 
-    if len(A) == m and len(c) == n:
-        A = np.array(A)
-        b = np.array(b)
-        c = np.array(c)
-
-        st.subheader("Solving Two-Phase Simplex")
-        try:
-            result = two_phase_simplex(A, b, c)
-            st.success(f"Optimal Solution: {result}")
-        except Exception as e:
-            st.error(str(e))
+        log = io.StringIO()
+        with contextlib.redirect_stdout(log):
+            value = two_phase_simplex(A, b, c)
+        st.success(f"Optimal value: {value:.6g}")
+        with st.expander("Show tableaux"):
+            st.code(log.getvalue())
+    except Exception as e:  # infeasible, unbounded, or bad input
+        st.error(str(e))
